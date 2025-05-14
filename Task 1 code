@@ -1,0 +1,43 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import zipfile
+
+# Unzip and read the file
+zip_path = '/content/API_SP.POP.TOTL_DS2_en_csv_v2_85220.zip'
+with zipfile.ZipFile(zip_path, 'r') as z:
+    # Check the filenames inside the ZIP
+    print(z.namelist())  # <-- Run once to check actual CSV name
+    file_name = z.namelist()[1]  # Usually the second file is the data CSV
+    with z.open(file_name) as f:
+        df = pd.read_csv(f, skiprows=4)
+
+# Clean and reshape data
+df = df.drop(columns=['Indicator Name', 'Indicator Code'])
+df_melted = df.melt(id_vars=["Country Name", "Country Code"], var_name="Year", value_name="Population")
+df_melted['Year'] = pd.to_numeric(df_melted['Year'], errors='coerce')
+df_melted['Population'] = pd.to_numeric(df_melted['Population'], errors='coerce')
+df_melted = df_melted.dropna()
+
+# Filter the most recent year
+latest_year = df_melted['Year'].max()
+df_latest = df_melted[df_melted['Year'] == latest_year]
+
+# --- Bar Chart ---
+top10 = df_latest.sort_values(by='Population', ascending=False).head(10)
+plt.figure(figsize=(12, 6))
+plt.bar(top10['Country Name'], top10['Population'], color='skyblue')
+plt.title(f"Top 10 Most Populous Countries ({int(latest_year)})")
+plt.xlabel("Country")
+plt.ylabel("Population")
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+
+# --- Histogram ---
+plt.figure(figsize=(10, 6))
+plt.hist(df_latest['Population'].dropna(), bins=15, color='orange', edgecolor='black')
+plt.title(f"Histogram of Country Populations ({int(latest_year)})")
+plt.xlabel("Population")
+plt.ylabel("Number of Countries")
+plt.tight_layout()
+plt.show()
